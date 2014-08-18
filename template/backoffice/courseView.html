@@ -1,0 +1,239 @@
+{% extends "backoffice/backofficeBasePage.html" %}
+
+{%block title%}
+修改课程
+{%endblock title%}
+
+{%block extra_css%}
+<link rel="stylesheet" type="text/css" href="{{STATIC_URL}}/yui2/build/calendar/assets/skins/sam/calendar.css">
+<link rel="stylesheet" type="text/css" href="{{STATIC_URL}}/yui2/build/fonts/fonts-min.css">
+<link rel="stylesheet" type="text/css" href="{{STATIC_URL}}/yui2/build/button/assets/skins/sam/button.css">
+{%endblock extra_css%}
+
+{%block pre_body_content%}
+<div id="startEnrollDateCalendar"></div>
+<div id="endEnrollDateCalendar"></div>
+<div id="courseStartDateCalendar"></div>
+{%endblock pre_body_content%}
+
+{%block extra_html_content%}
+<form id="email_form" action="/backoffice/course/email" method="post">
+    {% csrf_token %}
+    <input type="hidden" id="recipient_list" name="recipient_list"/>
+</form>
+{%endblock extra_html_content%}
+
+{%block content%}
+<form action="/backoffice/course/{{course.id}}" method="post" id="editForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="yui3-g" style="padding-top: 15px;">
+        <div class="yui3-u-1-5" style="float:left;font-weight: bold;">{{field.label_tag}}:</div>
+        <div class="yui3-u-4-5" style="float:left">
+            <div class="yui3-g">
+                <div class="yui3-u-3-5" style="float:left;font-weight: bold;">
+                    {{field}}
+                    <div style="font-weight:normal;color:red">{{field.help_text }}</div>
+                </div>
+                <div class="yui3-u-2-5 error_area">
+                    {%for error in field.errors%}
+                    {{error}}
+                    {%endfor%}
+                </div>
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    {%endfor%}
+    <br/>
+
+    <div class="yui3-g">
+        <div class="yui3-u-1-2">
+            <div class="yui3-g">
+                <div class="yui3-u-1-6">
+                    候补学员
+                </div>
+                <div class="yui3-u-5-6">
+                    <div class="yui3-g">
+                        <div class="yui3-u-4-5">
+                            <select name="waitingList" id="waitingList" multiple
+                                    style="width: 250px;height:200px;">
+                                {% for enroll in waitingList%}
+                                <option value="{{enroll.id}}">{{enroll.email}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="yui3-u-1-5">
+                            <button class="cancelEnrollButton" id="cancelEnrollButton"><<<</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="yui3-u-1-2">
+            <div class="yui3-g">
+                <div class="yui3-u-5-6">
+                    <div class="yui3-g">
+                        <div class="yui3-u-1-5">
+                            <button class="selectEnrollButton" id="selectEnrollButton">>>></button>
+                        </div>
+                        <div class="yui3-u-4-5">
+                            <select id="notWaitingList" name="notWaitingList" multiple
+                                    style="width: 250px;height:200px;">
+                                {% for enroll in notWaitingList%}
+                                <option value="{{enroll.id}}">{{enroll.email}}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="yui3-u-1-6">
+                    听课学员
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <hr/>
+    <input type="hidden" name="waitingList" id="waitingListHidden"/>
+    <input type="hidden" name="notWaitingList" id="notWaitingListHidden"/>
+    <input type="hidden" id="maxTrainee" value="{{course.maxTraineeAmount}}"/>
+
+    <div style="float: left;" id="submit_button_container"></div>
+    <div id="contacts_email_container"></div>
+</form>
+{%endblock content%}
+{%block extra_js%}
+<script src="{{STATIC_URL}}/yui2/build/yahoo-dom-event/yahoo-dom-event.js"></script>
+<script src="{{STATIC_URL}}/yui2/build/element/element-min.js"></script>
+<script src="{{STATIC_URL}}/yui2/build/button/button-min.js"></script>
+<script src="{{STATIC_URL}}/yui2/build/calendar/calendar-min.js"></script>
+{%endblock extra_js%}
+
+
+{%block js_content%}
+<script>
+    function selectEnrollUser(e) {
+        YAHOO.util.Event.preventDefault(e);
+        changeElementComboList('waitingList', 'notWaitingList');
+
+    }
+
+    function cancelEnrollUser(e) {
+        YAHOO.util.Event.preventDefault(e);
+        changeElementComboList('notWaitingList', 'waitingList');
+
+    }
+
+
+    function changeElementComboList(from, to) {
+        var fromComboList = YAHOO.util.Dom.get(from),
+                traineeAmount = YAHOO.util.Dom.get("maxTrainee").value,
+                toComboList = YAHOO.util.Dom.get(to);
+        for (var i = 0; i < fromComboList.options.length; i++) {
+            var option = fromComboList.options[i];
+            if (option.selected == true) {
+                if (from == 'waitingList' && toComboList.options.length >= traineeAmount) {
+                    return;
+                }
+                toComboList.appendChild(option);
+            }
+        }
+    }
+
+    function handleCalendarSelect(type, args, me) {
+        var dates = args[0],
+                date = dates[0],
+                year = date[0],
+                month = date[1],
+                day = date[2],
+                valueTextElement = YAHOO.util.Dom.get(me[1]);
+        valueTextElement.value = year + "-" + month + "-" + day;
+        me[0].hide();
+    }
+
+    function submitForm(type, args) {
+        var waitingListValue = ' ',
+                notWaitingListValue = ' ',
+                notWaitingListElement = YAHOO.util.Dom.get("notWaitingList"),
+                waitingListElement = YAHOO.util.Dom.get("waitingList");
+        if (notWaitingListElement.options != undefined && notWaitingListElement.options.length >= 1) {
+            for (var i = 0; i < notWaitingListElement.options.length; i++) {
+                notWaitingListValue += notWaitingListElement.options[i].value + "|";
+            }
+            notWaitingListValue = notWaitingListValue.substr(0, notWaitingListValue.length - 1);
+            YAHOO.util.Dom.get("notWaitingListHidden").value = notWaitingListValue;
+
+        }
+        if (waitingListElement.options != null && waitingListElement.options.length >= 1) {
+            for (var i = 0; i < waitingListElement.options.length; i++) {
+                waitingListValue += waitingListElement.options[i].value + "|";
+            }
+            waitingListValue = waitingListValue.substr(0, waitingListValue.length - 1);
+            YAHOO.util.Dom.get("waitingListHidden").value = waitingListValue;
+        }
+        YAHOO.util.Dom.get("editForm").submit()
+    }
+
+    function exportContacts(e) {
+        YAHOO.util.Event.preventDefault(e);
+        var selectedOptionName = "",
+                notWaitingListElement = YAHOO.util.Dom.get("notWaitingList");
+        for (var i = 0; i < notWaitingListElement.options.length; ++i) {
+            selectedOptionName += notWaitingListElement.options[i].text + ";";
+        }
+        selectedOptionName = selectedOptionName.substr(0, selectedOptionName.length - 1);
+        if (selectedOptionName.length == 0) {
+            alert("听课学员不能为空！");
+            return;
+        }
+        YAHOO.util.Dom.get("recipient_list").value = selectedOptionName;
+        YAHOO.util.Dom.get("email_form").submit();
+    }
+
+
+    function init() {
+        var startEnrollDateCalendar = new YAHOO.widget.Calendar("startEnrollDateCalendar", "startEnrollDateCalendar", {title:"选择课程开始报名日期", close:"true"}),
+                endEnrollDateCalendar = new YAHOO.widget.Calendar("endEnrollDateCalendar", "endEnrollDateCalendar", {title:"选择报名截至日期", close:"true"}),
+                courseStartDateCalendar = new YAHOO.widget.Calendar("courseStartDateCalendar", "courseStartDateCalendar", {title:"选择课程开始日期", close:"true"});
+        startEnrollDateCalendar.selectEvent.subscribe(handleCalendarSelect, [startEnrollDateCalendar, "id_enrollStartTime"], true);
+        endEnrollDateCalendar.selectEvent.subscribe(handleCalendarSelect, [endEnrollDateCalendar, "id_enrollEndTime"], true);
+        courseStartDateCalendar.selectEvent.subscribe(handleCalendarSelect, [courseStartDateCalendar, "id_courseStartTime"], true);
+        startEnrollDateCalendar.render();
+        endEnrollDateCalendar.render();
+        courseStartDateCalendar.render();
+
+        YAHOO.util.Dom.setStyle('startEnrollDateCalendar', 'position', 'absolute');
+        YAHOO.util.Dom.setStyle('endEnrollDateCalendar', 'position', 'absolute');
+        YAHOO.util.Dom.setStyle('courseStartDateCalendar', 'position', 'absolute');
+        YAHOO.util.Dom.setXY("startEnrollDateCalendar", YAHOO.util.Dom.getXY("id_enrollStartTime"));
+        YAHOO.util.Dom.setXY("courseStartDateCalendar", YAHOO.util.Dom.getXY("id_courseStartTime"));
+        YAHOO.util.Dom.setXY("endEnrollDateCalendar", YAHOO.util.Dom.getXY("id_enrollEndTime"));
+        startEnrollDateCalendar.hide();
+        endEnrollDateCalendar.hide();
+        courseStartDateCalendar.hide();
+
+        YAHOO.util.Event.addListener("id_enrollStartTime", "click", function () {
+            //startEnrollDateCalendar.show();
+        });
+
+        YAHOO.util.Event.addListener("id_enrollEndTime", "click", function () {
+
+           // endEnrollDateCalendar.show();
+
+        });
+        YAHOO.util.Event.addListener("id_courseStartTime", "click", function () {
+           // courseStartDateCalendar.show();
+        });
+        new YAHOO.widget.Button({label:"修改课程", container:"submit_button_container", id:"submit_button"});
+        new YAHOO.widget.Button({label:"发送通知邮件", container:"contacts_email_container", id:"email_button"});
+
+        YAHOO.util.Event.addListener("submit_button", "click", submitForm);
+        YAHOO.util.Event.addListener("selectEnrollButton", "click", selectEnrollUser);
+        YAHOO.util.Event.addListener("cancelEnrollButton", "click", cancelEnrollUser);
+        YAHOO.util.Event.addListener("email_button", "click", exportContacts);
+    }
+
+    YAHOO.util.Event.onDOMReady(init);
+</script>
+{%endblock js_content%}

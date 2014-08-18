@@ -1,0 +1,28 @@
+<form action="/event/eventtype/update" method="POST" id="update_event_form" enctype="multipart/form-data">
+    {% csrf_token %}
+    {%for field in eventTypeForm%}
+    <div class="yui3-g" style="width: 100%;padding-bottom: 15px;">
+        <div class="yui3-u-1-5" style="float:left;font-weight: bold;">{{field.label_tag}}:</div>
+        <div class="yui3-u-4-5" style="float:left">
+            <div class="yui3-g">
+                <div class="yui3-u-3-5" style="float:left;font-weight: bold;">
+                    {{field}}
+                </div>
+                <div class="yui3-u-2-5 error_area">
+                    {%for error in field.errors%}
+                    {{error}}
+                    {%endfor%}
+                </div>
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    {%endfor%}
+    <div style="text-align: right;">
+         <input type="hidden" name="id" value="{{id}}"/>
+        <input type="button" id="submit_update_form" style="margin-right: 15px;" value="提交"/>
+
+        <input type="button" id="panel_update_cancel" value="退出"/>
+
+    </div>
+</form>
