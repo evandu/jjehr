@@ -43,7 +43,7 @@ def book_course(request):
             _course = Course.objects.get(id=form._raw_value("course_id"))
             if _course.enrollStartTime > datetime.datetime.now() or _course.enrollEndTime < datetime.datetime.now():
                 return HttpResponse(404)
-            if Enroll.objects.filter(email=_email, course=_course).count() < 0:
+            if Enroll.objects.filter(email=_email, course=_course).count() > 0:
                 return HttpResponse(409)
             else:
                 enroll = Enroll(email=_email, course=_course)
